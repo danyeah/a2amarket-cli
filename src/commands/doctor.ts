@@ -2,7 +2,6 @@ import pc from "picocolors";
 import { existsSync, statSync } from "node:fs";
 import { configExists, configPath, loadConfig } from "../config.js";
 import { getAgent, APIError } from "../api.js";
-import { hasCDPCredentials } from "../cdp.js";
 import type { Command } from "commander";
 
 function check(label: string, ok: boolean, detail?: string): void {
@@ -42,12 +41,8 @@ export function registerDoctor(program: Command): void {
         check("Config file permissions (0600)", mode === 0o600, `current: 0${mode.toString(8)}`);
       }
 
-      // CDP credentials
-      check("CDP credentials in env", hasCDPCredentials(),
-        "needs CDP_API_KEY_ID, CDP_API_KEY_SECRET, CDP_WALLET_SECRET");
-
       // Wallet configured
-      const walletAddr = config.wallet?.address ?? config.cdp?.address;
+      const walletAddr = config.wallet?.address;
       check("Wallet configured", !!walletAddr, walletAddr);
 
       // API reachable

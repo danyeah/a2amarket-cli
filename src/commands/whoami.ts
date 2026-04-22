@@ -24,7 +24,7 @@ export function registerWhoami(program: Command): void {
       const info = {
         agent_id: config.agent.id,
         name: config.agent.name,
-        wallet: config.wallet?.address ?? config.cdp?.address ?? "(not configured)",
+        wallet: config.wallet?.address ?? "(not configured)",
         network: config.api.network,
         registered,
         reputation,

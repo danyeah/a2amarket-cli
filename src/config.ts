@@ -26,11 +26,6 @@ const ConfigSchema = z.object({
     address: z.string(),
     network: z.string(),
   }).optional(),
-  cdp: z.object({
-    account_name: z.string(),
-    address: z.string(),
-    network: z.string(),
-  }).optional(),
   preferences: z.object({
     default_output: z.enum(["markdown", "json"]).default("markdown"),
   }).default({}),
