@@ -1,4 +1,5 @@
 import { CdpClient } from "@coinbase/cdp-sdk";
+import { parseUnits } from "@coinbase/cdp-sdk";
 
 function getClient(): CdpClient {
   const apiKeyId = process.env.CDP_API_KEY_ID;
@@ -32,20 +33,23 @@ export async function createOrGetAccount(name: string, network: string): Promise
   };
 }
 
-export async function getBalance(address: string, network: string): Promise<{
+export async function getBalance(accountName: string, network: string): Promise<{
   usdc: string;
   eth: string;
 }> {
   const cdp = getClient();
-  const account = await cdp.evm.getOrCreateAccount({ name: address });
-  const balances = await account.listTokenBalances({ network: network as never });
+  const account = await cdp.evm.getAccount({ name: accountName });
+  const result = await account.listTokenBalances({ network: network as never });
 
   let usdc = "0";
   let eth = "0";
 
-  for (const b of balances as Array<{ token: { symbol: string }; amount: string }>) {
-    if (b.token.symbol === "USDC") usdc = b.amount;
-    if (b.token.symbol === "ETH") eth = b.amount;
+  for (const b of result.balances) {
+    const decimals = b.amount.decimals;
+    const raw = b.amount.amount;
+    const formatted = (Number(raw) / Math.pow(10, decimals)).toFixed(decimals > 6 ? 6 : decimals);
+    if (b.token.symbol === "USDC") usdc = formatted;
+    if (b.token.symbol === "ETH") eth = formatted;
   }
 
   return { usdc, eth };
@@ -58,14 +62,16 @@ export async function sendUsdc(
   network: string
 ): Promise<string> {
   const cdp = getClient();
-  const account = await cdp.evm.getOrCreateAccount({ name: accountName });
+  const account = await cdp.evm.getAccount({ name: accountName });
+  // USDC has 6 decimals
+  const atomicAmount = parseUnits(amount, 6);
   const tx = await account.transfer({
-    to,
-    amount,
+    to: to as `0x${string}`,
+    amount: atomicAmount,
     token: "usdc",
     network: network as never,
   });
-  return (tx as { hash: string }).hash;
+  return (tx as { transactionHash: string }).transactionHash ?? String(tx);
 }
 
 export function hasCDPCredentials(): boolean {
