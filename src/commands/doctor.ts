@@ -47,7 +47,8 @@ export function registerDoctor(program: Command): void {
         "needs CDP_API_KEY_ID, CDP_API_KEY_SECRET, CDP_WALLET_SECRET");
 
       // Wallet configured
-      check("Wallet configured", !!config.cdp?.address, config.cdp?.address);
+      const walletAddr = config.wallet?.address ?? config.cdp?.address;
+      check("Wallet configured", !!walletAddr, walletAddr);
 
       // API reachable
       const apiURL = process.env.A2A_MARKET_API ?? config.api.base_url;

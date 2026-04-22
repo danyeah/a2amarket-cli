@@ -1,6 +1,7 @@
-import { intro, outro, text, confirm, spinner } from "@clack/prompts";
+import { intro, outro, spinner } from "@clack/prompts";
 import pc from "picocolors";
-import { generateKeypair, publicKeyFromPrivate } from "../keys.js";
+import { generateKeypair } from "../keys.js";
+import { generateLocalWallet } from "../localWallet.js";
 import { saveConfig, configExists, configPath, type Config } from "../config.js";
 import { createOrGetAccount, hasCDPCredentials } from "../cdp.js";
 import type { Command } from "commander";
@@ -8,8 +9,8 @@ import type { Command } from "commander";
 export function registerInit(program: Command): void {
   program
     .command("init")
-    .description("Generate Ed25519 keypair and create a CDP wallet")
-    .option("--name <name>", "Agent name")
+    .description("Generate Ed25519 identity and a local Base wallet")
+    .option("--name <name>", "Agent name", "my-agent")
     .option("--network <network>", "Base network: base-sepolia or base", "base-sepolia")
     .option("--force", "Overwrite existing config", false)
     .action(async (opts) => {
@@ -17,47 +18,34 @@ export function registerInit(program: Command): void {
 
       if (configExists() && !opts.force) {
         console.log(pc.yellow(`Config already exists at ${configPath()}`));
-        const overwrite = await confirm({ message: "Overwrite existing config?" });
-        if (!overwrite) {
-          outro("Aborted.");
-          return;
-        }
+        console.log(pc.dim("Use --force to overwrite."));
+        process.exit(0);
       }
 
-      const name = opts.name ?? await text({
-        message: "Agent name",
-        placeholder: "my-agent",
-        validate: (v) => v.length < 2 ? "Name must be at least 2 characters" : undefined,
-      }) as string;
-
-      // Generate Ed25519 keypair
       const s = spinner();
+
+      // 1. Ed25519 keypair (API signing identity)
       s.start("Generating Ed25519 keypair");
       const keypair = generateKeypair();
-      s.stop(pc.green("✓ Keypair generated"));
+      s.stop(pc.green("✓ Ed25519 keypair generated"));
 
-      // CDP wallet (optional — requires CDP credentials)
+      // 2. Local Base wallet (no CDP required)
+      s.start("Generating local Base wallet");
+      const localWallet = generateLocalWallet();
+      s.stop(pc.green(`✓ Wallet generated: ${localWallet.address}`));
+
+      // 3. Optional: CDP MPC wallet
       let cdpInfo: Config["cdp"] = undefined;
-
       if (hasCDPCredentials()) {
-        s.start("Creating CDP wallet on Base");
+        s.start("Creating CDP MPC wallet (optional)");
         try {
           const shortId = keypair.publicKeyHex.slice(0, 8);
-          const accountName = `a2a-${shortId}`;
-          const account = await createOrGetAccount(accountName, opts.network);
-          cdpInfo = {
-            account_name: account.name,
-            address: account.address,
-            network: opts.network,
-          };
-          s.stop(pc.green(`✓ Wallet created: ${account.address}`));
+          const account = await createOrGetAccount(`a2a-${shortId}`, opts.network);
+          cdpInfo = { account_name: account.name, address: account.address, network: opts.network };
+          s.stop(pc.green(`✓ CDP wallet created: ${account.address}`));
         } catch (err) {
-          s.stop(pc.yellow("⚠ CDP wallet creation failed (credentials missing or invalid)"));
-          console.log(pc.dim(String(err)));
+          s.stop(pc.dim("CDP wallet skipped: " + (err instanceof Error ? err.message : err)));
         }
-      } else {
-        console.log(pc.dim("No CDP credentials found — skipping wallet creation."));
-        console.log(pc.dim("Set CDP_API_KEY_ID, CDP_API_KEY_SECRET, CDP_WALLET_SECRET to enable."));
       }
 
       const config: Config = {
@@ -69,11 +57,16 @@ export function registerInit(program: Command): void {
         },
         agent: {
           id: keypair.publicKeyHex,
-          name,
+          name: opts.name,
           ed25519: {
             public_key_hex: keypair.publicKeyHex,
             private_key_hex: keypair.privateKeyHex,
           },
+        },
+        wallet: {
+          address: localWallet.address,
+          private_key_hex: localWallet.privateKeyHex,
+          network: opts.network,
         },
         cdp: cdpInfo,
         preferences: { default_output: "markdown" },
@@ -82,11 +75,12 @@ export function registerInit(program: Command): void {
       saveConfig(config);
 
       outro(
-        pc.green("✓ Initialised") + "\n\n" +
-        `  Agent ID:  ${pc.bold(keypair.publicKeyHex.slice(0, 16))}...\n` +
-        (cdpInfo ? `  Wallet:    ${pc.bold(cdpInfo.address)}\n` : "") +
-        `  Config:    ${configPath()}\n\n` +
-        `  Next step: ${pc.cyan("a2a-market register")}`
+        pc.green("✓ Initialised\n") +
+        `\n  Agent ID:  ${pc.bold(keypair.publicKeyHex.slice(0, 16))}...` +
+        `\n  Wallet:    ${pc.bold(localWallet.address)} (${opts.network})` +
+        `\n  Config:    ${configPath()}` +
+        `\n\n  ${pc.dim("Keep your config file safe — it contains your private keys.")}` +
+        `\n\n  Next step: ${pc.cyan("a2a-market register")}`
       );
     });
 }

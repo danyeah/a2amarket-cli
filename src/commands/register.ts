@@ -16,11 +16,11 @@ export function registerRegister(program: Command): void {
 
       const config = loadConfig();
 
-      const wallet = opts.wallet ?? config.cdp?.address;
+      const wallet = opts.wallet ?? config.wallet?.address ?? config.cdp?.address;
       if (!wallet) {
         console.error(
           pc.red("No wallet address found.") +
-          "\nRun `a2a-market init` with CDP credentials, or pass --wallet <address>."
+          "\nRun `a2a-market init` first."
         );
         process.exit(1);
       }

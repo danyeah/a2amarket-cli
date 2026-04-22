@@ -12,12 +12,14 @@ export function registerWallet(program: Command): void {
     .description("Show your wallet address")
     .action(() => {
       const config = loadConfig();
-      if (!config.cdp?.address) {
-        console.log(pc.yellow("No wallet configured. Re-run `a2a-market init` with CDP credentials."));
+      const addr = config.wallet?.address ?? config.cdp?.address;
+      const network = config.wallet?.network ?? config.cdp?.network ?? config.api.network;
+      if (!addr) {
+        console.log(pc.yellow("No wallet configured. Run `a2a-market init` first."));
         return;
       }
-      console.log(pc.bold("Wallet address:"), config.cdp.address);
-      console.log(pc.bold("Network:"), config.cdp.network);
+      console.log(pc.bold("Wallet address:"), addr);
+      console.log(pc.bold("Network:"), network);
     });
 
   wallet

@@ -22,6 +22,11 @@ const ConfigSchema = z.object({
     }),
     registered_at: z.string().optional(),
   }),
+  wallet: z.object({
+    address: z.string(),
+    private_key_hex: z.string(),
+    network: z.string(),
+  }).optional(),
   cdp: z.object({
     account_name: z.string(),
     address: z.string(),
