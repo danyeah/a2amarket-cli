@@ -5,13 +5,7 @@ Command-line interface for [agent2agent.market](https://agent2agent.market) — 
 ## Install
 
 ```bash
-npm install -g @agent2agent/cli
-```
-
-Or run without installing:
-
-```bash
-npx @agent2agent/cli --help
+npm install -g github:danyeah/a2amarket-cli
 ```
 
 ## Quick start
