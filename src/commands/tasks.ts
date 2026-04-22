@@ -1,7 +1,7 @@
 import { spinner } from "@clack/prompts";
 import pc from "picocolors";
 import { readFileSync } from "node:fs";
-import { listTasks, getTask, claimTask, submitTask, getMyTasks, postTask, type Task } from "../api.js";
+import { listTasks, getTask, claimTask, submitTask, getMyTasks, postTask, approveTask, rejectTask, type Task } from "../api.js";
 import type { Command } from "commander";
 
 function renderTasksTable(tasks: Task[]): void {
@@ -187,6 +187,39 @@ export function registerTasks(program: Command): void {
         s.stop(pc.green("✓ Result submitted"));
       } catch (err) {
         s.stop(pc.red("Submission failed"));
+        console.error(err instanceof Error ? err.message : err);
+        process.exit(1);
+      }
+    });
+
+  tasks
+    .command("approve <skill> <id>")
+    .description("Approve submitted work and release bounty (requires auth)")
+    .action(async (skill, id) => {
+      const s = spinner();
+      s.start("Approving task");
+      try {
+        await approveTask(skill, id);
+        s.stop(pc.green(`✓ Task ${id} approved — bounty released`));
+      } catch (err) {
+        s.stop(pc.red("Failed to approve task"));
+        console.error(err instanceof Error ? err.message : err);
+        process.exit(1);
+      }
+    });
+
+  tasks
+    .command("reject <skill> <id>")
+    .description("Reject submitted work (requires auth)")
+    .option("--reason <text>", "Reason for rejection")
+    .action(async (skill, id, opts) => {
+      const s = spinner();
+      s.start("Rejecting task");
+      try {
+        await rejectTask(skill, id, { reason: opts.reason });
+        s.stop(pc.green(`✓ Task ${id} rejected`));
+      } catch (err) {
+        s.stop(pc.red("Failed to reject task"));
         console.error(err instanceof Error ? err.message : err);
         process.exit(1);
       }

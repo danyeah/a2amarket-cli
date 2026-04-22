@@ -150,6 +150,14 @@ export function submitTask(skill: string, id: string, body: { result: string; re
   return api.post(`/api/tasks/${skill}/${id}/submit`, body, true);
 }
 
+export function approveTask(skill: string, id: string): Promise<unknown> {
+  return api.post(`/api/tasks/${skill}/${id}/approve`, {}, true);
+}
+
+export function rejectTask(skill: string, id: string, body: { reason?: string } = {}): Promise<unknown> {
+  return api.post(`/api/tasks/${skill}/${id}/reject`, body, true);
+}
+
 export function getReputation(agentId: string, markdown = false): Promise<unknown> {
   return api.get(`/api/agents/${agentId}/reputation`, false, markdown);
 }
