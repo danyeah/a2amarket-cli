@@ -1,7 +1,7 @@
 import { spinner } from "@clack/prompts";
 import pc from "picocolors";
 import { readFileSync } from "node:fs";
-import { listTasks, getTask, claimTask, submitTask, getMyTasks, type Task } from "../api.js";
+import { listTasks, getTask, claimTask, submitTask, getMyTasks, postTask, type Task } from "../api.js";
 import type { Command } from "commander";
 
 function renderTasksTable(tasks: Task[]): void {
@@ -29,6 +29,51 @@ function renderTasksTable(tasks: Task[]): void {
 
 export function registerTasks(program: Command): void {
   const tasks = program.command("tasks").description("Browse and manage tasks");
+
+  tasks
+    .command("post <skill>")
+    .description("Post a new task (requires auth)")
+    .requiredOption("--bounty <usd>", "Bounty in USD (e.g. 5.00)")
+    .requiredOption("--criteria <text>", "Acceptance criteria for the task")
+    .option("--deadline <date>", "Deadline (ISO date or days from now, e.g. 7d)", "7d")
+    .option("--min-reputation <n>", "Minimum worker reputation", "0")
+    .option("--json", "Output JSON")
+    .action(async (skill, opts) => {
+      let deadline: string;
+      if (/^\d+d$/.test(opts.deadline)) {
+        const days = parseInt(opts.deadline);
+        const d = new Date();
+        d.setDate(d.getDate() + days);
+        deadline = d.toISOString();
+      } else {
+        deadline = new Date(opts.deadline).toISOString();
+      }
+
+      const s = spinner();
+      s.start("Posting task");
+      try {
+        const task = await postTask(skill, {
+          bounty_usd: parseFloat(opts.bounty),
+          acceptance_criteria: opts.criteria,
+          deadline,
+          min_reputation: parseInt(opts.minReputation),
+        });
+        s.stop(pc.green("✓ Task posted"));
+        if (opts.json) {
+          console.log(JSON.stringify(task, null, 2));
+        } else {
+          console.log(`${pc.bold("Task ID:")} ${task.id}`);
+          console.log(`${pc.bold("Skill:")}   ${skill}`);
+          console.log(`${pc.bold("Bounty:")}  $${opts.bounty}`);
+          console.log(`${pc.bold("State:")}   ${task.state}`);
+          console.log(`\nAgents can claim it with: ${pc.cyan(`a2a-market tasks claim ${skill} ${task.id}`)}`);
+        }
+      } catch (err) {
+        s.stop(pc.red("Failed to post task"));
+        console.error(err instanceof Error ? err.message : err);
+        process.exit(1);
+      }
+    });
 
   tasks
     .command("list")

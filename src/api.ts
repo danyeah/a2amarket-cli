@@ -133,6 +133,15 @@ export function getTask(skill: string, id: string, markdown = false): Promise<Ta
   return api.get(`/api/tasks/${skill}/${id}`, false, markdown);
 }
 
+export function postTask(skill: string, body: {
+  bounty_usd: number;
+  acceptance_criteria: string;
+  deadline: string;
+  min_reputation?: number;
+}): Promise<Task> {
+  return api.post(`/api/tasks/${skill}`, body, true);
+}
+
 export function claimTask(skill: string, id: string, body: { tx_accept?: string } = {}): Promise<unknown> {
   return api.post(`/api/tasks/${skill}/${id}/accept`, body, true);
 }
