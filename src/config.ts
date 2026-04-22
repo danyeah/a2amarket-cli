@@ -3,8 +3,8 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { z } from "zod";
 
-const CONFIG_DIR = join(homedir(), ".a2a-market");
-const CONFIG_FILE = join(CONFIG_DIR, "config.json");
+const CONFIG_FILE = process.env.A2A_MARKET_CONFIG ?? join(homedir(), ".a2a-market", "config.json");
+const CONFIG_DIR = join(CONFIG_FILE, "..");
 
 const ConfigSchema = z.object({
   version: z.literal(1),
